@@ -1,17 +1,35 @@
-# Heart Disease Risk Model: MLOps Extension
+# Heart Disease Risk Model
 
 ![CI](https://github.com/chinmaynighojkar/heart-disease-mlops/actions/workflows/ci.yml/badge.svg)
 
-Production-style ML system around a Heart Disease risk classifier: model
-serving with per-prediction explainability, data drift monitoring, and a
-monitoring dashboard, wired together with automated tests in CI.
+An end-to-end MLOps project that predicts heart-disease risk from clinical
+features and runs it as a production-style ML system: model training,
+API serving with per-prediction explainability, data drift monitoring, a
+monitoring dashboard, containerization, and automated tests in CI.
 
-A tuned RandomForest classifier (test ROC-AUC **0.93**, F1 **0.91** on the
-combined UCI heart-disease dataset, 11 clinical features) is wrapped in a
-FastAPI service that returns a risk score plus SHAP feature attributions for
-every prediction and logs each request. Evidently AI compares those live
-requests against the training baseline to detect input drift, and a Streamlit
-dashboard surfaces model health, prediction trends, and drift status.
+The pipeline trains and tunes a classifier, then serves it behind a FastAPI
+endpoint that returns a risk score plus SHAP feature attributions for every
+prediction and logs each request. Evidently AI compares those live requests
+against the training baseline to detect input drift, and a Streamlit dashboard
+surfaces model health, prediction trends, and drift status.
+
+**Model:** a tuned RandomForest (selected over GradientBoosting and XGBoost by
+5-fold cross-validation) reaches test ROC-AUC **0.93** and F1 **0.91** on the
+combined UCI heart-disease dataset (11 clinical features, binary target).
+
+## Features
+
+- **Training pipeline** with model selection (RandomForest / GradientBoosting /
+  XGBoost) by cross-validated ROC-AUC and GridSearch hyperparameter tuning.
+- **FastAPI serving** with Pydantic input validation, calibrated risk scores,
+  and per-prediction SHAP explanations returning the top risk factors.
+- **Prediction logging** to a structured store that feeds downstream monitoring.
+- **Drift monitoring** with Evidently AI, comparing live inputs against the
+  training baseline and producing HTML reports.
+- **Streamlit dashboard** for model metrics, feature importance, prediction
+  trends, and drift status.
+- **Dockerized** service and **GitHub Actions CI** that trains the model and
+  runs the test suite on every push.
 
 ## Architecture
 
@@ -90,7 +108,7 @@ validation (422 on missing fields). CI runs training + tests on every push.
 ## Dataset
 
 Combined UCI heart-disease dataset (`data/raw/heart.csv`, 1190 rows,
-11 features, binary target). The original exploratory classifier lives in
-`reference/baseline_classifier.ipynb`.
+11 features, binary target). Initial exploratory data analysis and modeling
+experiments are kept in `reference/baseline_classifier.ipynb`.
 
 _Dashboard screenshot: add `docs/dashboard.png` after running the app locally._
