@@ -21,6 +21,9 @@ combined UCI heart-disease dataset (11 clinical features, binary target).
 
 - **Training pipeline** with model selection (RandomForest / GradientBoosting /
   XGBoost) by cross-validated ROC-AUC and GridSearch hyperparameter tuning.
+- **Data-quality handling** for zero-coded missing values (a known leakage trap
+  in this dataset), imputed consistently at train and serve time. See the
+  [model card](docs/model_card.md) for details and a fairness analysis.
 - **FastAPI serving** with Pydantic input validation, calibrated risk scores,
   and per-prediction SHAP explanations returning the top risk factors.
 - **Prediction logging** to a structured store that feeds downstream monitoring.

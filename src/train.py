@@ -6,7 +6,10 @@ metadata the API and monitoring layers depend on.
 """
 
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # allow `python src/train.py`
 
 import joblib
 import numpy as np
@@ -21,6 +24,8 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
 from xgboost import XGBClassifier
+
+from src.preprocessing import apply_imputation, fit_impute_values
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_CSV = ROOT / "data" / "raw" / "heart.csv"
@@ -93,6 +98,12 @@ def main() -> None:
         X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE
     )
 
+    # Fit zero-as-missing imputation on the training split only, then apply to
+    # both splits (and save it so the API can reproduce it at serve time).
+    impute_values = fit_impute_values(X_train)
+    X_train = apply_imputation(X_train, impute_values)
+    X_test = apply_imputation(X_test, impute_values)
+
     # 5-fold ROC-AUC on the training split; pick the strongest baseline.
     cv_scores = {}
     for name, model in CANDIDATES.items():
@@ -125,15 +136,31 @@ def main() -> None:
         "f1": round(f1_score(y_test, y_pred), 4),
     }
 
+    # Per-sex subgroup metrics on the test set (fairness signal for the model card).
+    subgroup_metrics = {}
+    for label, code in [("female", 0), ("male", 1)]:
+        mask = X_test["sex"] == code
+        if mask.sum() > 0 and y_test[mask].nunique() > 1:
+            subgroup_metrics[label] = {
+                "n": int(mask.sum()),
+                "accuracy": round(accuracy_score(y_test[mask], y_pred[mask]), 4),
+                "roc_auc": round(roc_auc_score(y_test[mask], y_proba[mask]), 4),
+                "recall": round(recall_score(y_test[mask], y_pred[mask]), 4),
+                "positive_rate": round(float(y_test[mask].mean()), 4),
+            }
+
     joblib.dump(model, MODELS / "classifier.joblib")
     joblib.dump(FEATURES, MODELS / "feature_names.joblib")
+    joblib.dump(impute_values, MODELS / "impute_values.joblib")
 
     training_metrics = {
-        "model_version": "1.0",
+        "model_version": "1.1",
         "model_type": best_name,
         "best_params": grid.best_params_,
         "cv_roc_auc": {k: round(v, 4) for k, v in cv_scores.items()},
         "test_metrics": metrics,
+        "subgroup_metrics_by_sex": subgroup_metrics,
+        "impute_values": impute_values,
         "n_train": int(len(X_train)),
         "n_test": int(len(X_test)),
         "features": FEATURES,

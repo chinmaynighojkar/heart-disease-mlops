@@ -16,12 +16,15 @@ import shap
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from src.preprocessing import apply_imputation
+
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = ROOT / "models"
 LOG_PATH = ROOT / "monitoring" / "logs" / "predictions.jsonl"
 
 model = joblib.load(MODELS / "classifier.joblib")
 FEATURES = joblib.load(MODELS / "feature_names.joblib")
+IMPUTE_VALUES = joblib.load(MODELS / "impute_values.joblib")
 TRAINING_METRICS = json.loads((MODELS / "training_metrics.json").read_text())
 explainer = shap.TreeExplainer(model)
 
@@ -86,8 +89,9 @@ def run_drift_report():
 
 @app.post("/predict")
 def predict(patient: PatientFeatures):
-    features = patient.model_dump()
-    row = pd.DataFrame([features])[FEATURES]
+    # Apply the same zero-as-missing imputation the model was trained with.
+    row = apply_imputation(pd.DataFrame([patient.model_dump()])[FEATURES], IMPUTE_VALUES)
+    features = row.iloc[0].to_dict()
 
     risk_score = float(model.predict_proba(row)[0, 1])
     prediction = int(risk_score >= 0.5)
