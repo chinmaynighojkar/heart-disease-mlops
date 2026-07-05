@@ -111,4 +111,6 @@ Combined UCI heart-disease dataset (`data/raw/heart.csv`, 1190 rows,
 11 features, binary target). Initial exploratory data analysis and modeling
 experiments are kept in `reference/baseline_classifier.ipynb`.
 
-_Dashboard screenshot: add `docs/dashboard.png` after running the app locally._
+## Dashboard
+
+![Monitoring dashboard](docs/dashboard.png)
