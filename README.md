@@ -27,8 +27,12 @@ combined UCI heart-disease dataset (11 clinical features, binary target).
 - **FastAPI serving** with Pydantic input validation, calibrated risk scores,
   and per-prediction SHAP explanations returning the top risk factors.
 - **Prediction logging** to a structured store that feeds downstream monitoring.
+- **Probability calibration** (Platt scaling) with a reliability diagram and
+  Brier score, so `risk_score` is a calibrated probability rather than a raw
+  tree vote.
 - **Drift monitoring** with Evidently AI, comparing live inputs against the
-  training baseline and producing HTML reports.
+  training baseline and producing HTML reports, plus a `--simulate` mode that
+  demonstrates the report firing on a deliberately shifted population.
 - **Streamlit dashboard** for model metrics, feature importance, prediction
   trends, and drift status.
 - **Dockerized** service and **GitHub Actions CI** that trains the model and
@@ -61,7 +65,8 @@ pip install -r requirements.txt
 python src/train.py                     # train + save artifacts
 uvicorn api.main:app --reload           # serve the API at http://localhost:8000/docs
 streamlit run dashboard/app.py          # launch the monitoring dashboard
-python src/monitor.py                   # generate a drift report from logged predictions
+python src/monitor.py                   # drift report from logged predictions
+python src/monitor.py --simulate        # demo: drift report on a shifted population
 ```
 
 ### With Docker

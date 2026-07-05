@@ -22,11 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 MODELS = ROOT / "models"
 LOG_PATH = ROOT / "monitoring" / "logs" / "predictions.jsonl"
 
-model = joblib.load(MODELS / "classifier.joblib")
+model = joblib.load(MODELS / "classifier.joblib")  # calibrated, for risk_score
+shap_model = joblib.load(MODELS / "shap_model.joblib")  # base tree, for SHAP
 FEATURES = joblib.load(MODELS / "feature_names.joblib")
 IMPUTE_VALUES = joblib.load(MODELS / "impute_values.joblib")
 TRAINING_METRICS = json.loads((MODELS / "training_metrics.json").read_text())
-explainer = shap.TreeExplainer(model)
+explainer = shap.TreeExplainer(shap_model)
 
 app = FastAPI(title="Heart Disease Risk Model", version=TRAINING_METRICS["model_version"])
 

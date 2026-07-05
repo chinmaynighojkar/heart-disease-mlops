@@ -8,14 +8,17 @@
 
 - **Type:** RandomForestClassifier (selected over GradientBoosting and XGBoost
   by 5-fold cross-validated ROC-AUC).
-- **Version:** 1.1
+- **Version:** 1.2
 - **Hyperparameters:** `n_estimators=400`, `max_depth=None`, `min_samples_leaf=2`
   (tuned with `GridSearchCV` on ROC-AUC).
+- **Calibration:** probabilities are calibrated with Platt scaling
+  (`CalibratedClassifierCV`, sigmoid, 5-fold). The uncalibrated tree model is
+  retained only to compute SHAP attributions.
 - **Inputs:** 11 clinical features (age, sex, chest pain type, resting blood
   pressure, cholesterol, fasting blood sugar, resting ECG, max heart rate,
   exercise angina, oldpeak, ST slope).
-- **Output:** probability of heart disease (`risk_score`) and a binary
-  prediction at a **0.5** threshold, with per-prediction SHAP attributions.
+- **Output:** calibrated probability of heart disease (`risk_score`) and a
+  binary prediction at a **0.5** threshold, with per-prediction SHAP attributions.
 
 ## Intended use
 
@@ -43,23 +46,33 @@
 
 | Metric | Value |
 |---|---|
-| Accuracy | 0.902 |
+| Accuracy | 0.891 |
 | ROC-AUC | 0.927 |
-| Precision | 0.896 |
-| Recall | 0.931 |
-| F1 | 0.914 |
+| Precision | 0.887 |
+| Recall | 0.922 |
+| F1 | 0.904 |
 
 Removing the missing-value leakage described above changed ROC-AUC only
 marginally (0.932 → 0.927), which indicates the model's signal comes from
 genuine features (ST slope, chest pain type, exercise angina) rather than the
 data artifact.
 
+### Calibration
+
+RandomForest vote fractions are not well-calibrated probabilities, so the raw
+`predict_proba` is better read as a ranking. Platt scaling reduces the Brier
+score on the test set from **0.102 (uncalibrated) to 0.098 (calibrated)**;
+ROC-AUC is unchanged because calibration is a monotonic transform. The
+reliability diagram below compares the two.
+
+![Reliability diagram](reliability.png)
+
 ## Fairness analysis (by sex)
 
 | Subgroup | n | Positive rate | Accuracy | ROC-AUC | Recall |
 |---|---|---|---|---|---|
-| Female | 38 | 0.158 | 0.947 | 0.953 | 0.833 |
-| Male | 146 | 0.658 | 0.890 | 0.905 | 0.938 |
+| Female | 38 | 0.158 | 0.947 | 0.948 | 0.833 |
+| Male | 146 | 0.658 | 0.877 | 0.906 | 0.927 |
 
 **Concerns:**
 

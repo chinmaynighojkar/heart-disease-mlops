@@ -17,6 +17,7 @@ MODELS = ROOT / "models"
 LOG_PATH = ROOT / "monitoring" / "logs" / "predictions.jsonl"
 REPORTS_DIR = ROOT / "monitoring" / "reports"
 SHAP_IMG = ROOT / "dashboard" / "shap_summary.png"
+RELIABILITY_IMG = ROOT / "docs" / "reliability.png"
 
 st.set_page_config(page_title="Heart Disease Risk Monitoring", layout="wide")
 
@@ -28,9 +29,9 @@ def load_metrics() -> dict:
 
 @st.cache_resource
 def load_model_bits():
-    model = joblib.load(MODELS / "classifier.joblib")
+    shap_model = joblib.load(MODELS / "shap_model.joblib")  # base tree, for SHAP
     features = joblib.load(MODELS / "feature_names.joblib")
-    return model, features
+    return shap_model, features
 
 
 @st.cache_data
@@ -78,8 +79,21 @@ with tab1:
     ):
         col.metric(label, f"{tm[key]:.3f}")
 
-    st.markdown("### Feature importance (mean |SHAP|)")
-    st.image(shap_summary_image(), use_container_width=False, width=700)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("### Feature importance (mean |SHAP|)")
+        st.image(shap_summary_image(), use_container_width=True)
+    with c2:
+        st.markdown("### Probability calibration")
+        cal = metrics.get("calibration")
+        if cal:
+            b1, b2 = st.columns(2)
+            b1.metric("Brier (uncalibrated)", f"{cal['brier_uncalibrated']:.3f}")
+            b2.metric("Brier (calibrated)", f"{cal['brier_calibrated']:.3f}",
+                      delta=f"{cal['brier_calibrated'] - cal['brier_uncalibrated']:+.3f}",
+                      delta_color="inverse")
+        if RELIABILITY_IMG.exists():
+            st.image(str(RELIABILITY_IMG), use_container_width=True)
 
 # --- Tab 2: Recent Predictions ---
 with tab2:
@@ -102,18 +116,28 @@ with tab2:
 # --- Tab 3: Drift Monitoring ---
 with tab3:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    reports = sorted(REPORTS_DIR.glob("drift_report_*.html"), reverse=True)
+    reports = sorted(REPORTS_DIR.glob("*_report_*.html"), reverse=True)
 
-    if st.button("Run new drift report"):
-        from src.monitor import run_drift_report
+    st.caption(
+        "Detects input (data) drift only. Performance drift needs ground-truth "
+        "outcomes, which this system does not collect."
+    )
+    from src.monitor import run_drift_report, run_simulated_drift
+
+    c1, c2 = st.columns(2)
+    run_logged = c1.button("Run drift report (logged predictions)")
+    run_sim = c2.button("Simulate drift (demo)")
+
+    if run_logged or run_sim:
         with st.spinner("Running Evidently drift analysis..."):
             try:
-                summary = run_drift_report()
-                st.success(
+                summary = run_simulated_drift() if run_sim else run_drift_report()
+                verb = "success" if not summary["dataset_drift"] else "warning"
+                getattr(st, verb)(
                     f"{summary['drifted_features']}/{summary['total_features']} features drifted "
                     f"| dataset_drift={summary['dataset_drift']} (n={summary['n_current']})"
                 )
-                reports = sorted(REPORTS_DIR.glob("drift_report_*.html"), reverse=True)
+                reports = sorted(REPORTS_DIR.glob("*_report_*.html"), reverse=True)
             except Exception as exc:  # noqa: BLE001, surface any pipeline error to the UI
                 st.error(f"Could not run drift report: {exc}")
 
