@@ -1,0 +1,9 @@
+.venv/
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+monitoring/logs/*.jsonl
+monitoring/reports/*.html
+reference/
