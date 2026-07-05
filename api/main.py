@@ -77,6 +77,13 @@ def model_info():
     return TRAINING_METRICS
 
 
+@app.get("/monitoring/run-drift-report")
+def run_drift_report():
+    from src.monitor import run_drift_report as _run
+
+    return _run()
+
+
 @app.post("/predict")
 def predict(patient: PatientFeatures):
     features = patient.model_dump()
