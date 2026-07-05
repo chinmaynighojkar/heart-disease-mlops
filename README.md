@@ -1,5 +1,7 @@
 # Heart Disease Risk Model: MLOps Extension
 
+![CI](https://github.com/chinmaynighojkar/heart-disease-mlops/actions/workflows/ci.yml/badge.svg)
+
 Production-style ML system around a Heart Disease risk classifier: model
 serving with per-prediction explainability, data drift monitoring, and a
 monitoring dashboard, wired together with automated tests in CI.
