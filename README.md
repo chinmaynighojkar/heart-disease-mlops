@@ -1,4 +1,4 @@
-# Heart Disease Risk Model — MLOps Extension
+# Heart Disease Risk Model: MLOps Extension
 
 Production-style ML system around a Heart Disease risk classifier: model
 serving with per-prediction explainability, data drift monitoring, and a

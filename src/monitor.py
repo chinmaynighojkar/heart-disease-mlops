@@ -26,7 +26,7 @@ def load_current(n_recent: int | None = None) -> pd.DataFrame:
         raise FileNotFoundError(f"No prediction log at {LOG_PATH}")
     rows = [json.loads(line)["features"] for line in LOG_PATH.read_text().splitlines() if line.strip()]
     if not rows:
-        raise ValueError("Prediction log is empty — make some /predict calls first.")
+        raise ValueError("Prediction log is empty. Make some /predict calls first.")
     df = pd.DataFrame(rows)[FEATURES]
     return df.tail(n_recent) if n_recent else df
 

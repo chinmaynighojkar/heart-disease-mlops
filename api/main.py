@@ -50,7 +50,7 @@ def _positive_class_shap(row: pd.DataFrame) -> np.ndarray:
     values = np.asarray(values)
     if values.ndim == 3:  # (samples, features, classes)
         return values[0, :, -1]
-    if values.ndim == 2:  # (samples, features) — single output
+    if values.ndim == 2:  # (samples, features), single output
         return values[0]
     raise ValueError(f"Unexpected SHAP output shape: {values.shape}")
 

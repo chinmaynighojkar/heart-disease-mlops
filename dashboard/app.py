@@ -18,7 +18,7 @@ LOG_PATH = ROOT / "monitoring" / "logs" / "predictions.jsonl"
 REPORTS_DIR = ROOT / "monitoring" / "reports"
 SHAP_IMG = ROOT / "dashboard" / "shap_summary.png"
 
-st.set_page_config(page_title="Heart Disease Risk — Monitoring", layout="wide")
+st.set_page_config(page_title="Heart Disease Risk Monitoring", layout="wide")
 
 
 @st.cache_data
@@ -63,7 +63,7 @@ def load_predictions() -> pd.DataFrame:
     return df
 
 
-st.title("❤️ Heart Disease Risk Model — Monitoring")
+st.title("❤️ Heart Disease Risk Model Monitoring")
 tab1, tab2, tab3 = st.tabs(["Model Overview", "Recent Predictions", "Drift Monitoring"])
 
 # --- Tab 1: Model Overview ---
@@ -114,7 +114,7 @@ with tab3:
                     f"| dataset_drift={summary['dataset_drift']} (n={summary['n_current']})"
                 )
                 reports = sorted(REPORTS_DIR.glob("drift_report_*.html"), reverse=True)
-            except Exception as exc:  # noqa: BLE001 — surface any pipeline error to the UI
+            except Exception as exc:  # noqa: BLE001, surface any pipeline error to the UI
                 st.error(f"Could not run drift report: {exc}")
 
     if reports:
