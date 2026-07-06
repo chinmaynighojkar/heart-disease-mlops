@@ -14,8 +14,21 @@ against the training baseline to detect input drift, and a Streamlit dashboard
 surfaces model health, prediction trends, and drift status.
 
 **Model:** a tuned RandomForest (selected over GradientBoosting and XGBoost by
-5-fold cross-validation) reaches test ROC-AUC **0.93** and F1 **0.91** on the
+5-fold cross-validation) reaches test ROC-AUC **0.93** and F1 **0.90** on the
 combined UCI heart-disease dataset (11 clinical features, binary target).
+
+## Background
+
+This project started from an existing analysis of the same dataset (kept in
+`reference/baseline_classifier.ipynb`): a five-model comparison that selected a
+tuned RandomForest and ended with one hard-coded example prediction. That
+notebook shows the data is learnable, but stops at a one-off evaluation. Reading
+it surfaced concrete gaps, no saved model or serving path, no per-prediction
+explanation, an unnoticed data leak (missing cholesterol encoded as `0`), model
+selection on accuracy rather than AUC, uncalibrated probabilities, and no
+monitoring or reproducibility. Everything below is the response to those gaps:
+turning the analysis into a serve-able, explainable, calibrated, monitored, and
+reproducible system. See [PLAN.md](PLAN.md) for the full design story.
 
 ## Features
 
@@ -110,14 +123,16 @@ curl -X POST http://localhost:8000/predict \
 pytest tests/ -v
 ```
 
-Covers the health check, a valid prediction (response schema), and input
-validation (422 on missing fields). CI runs training + tests on every push.
+Covers the health check, a valid prediction (response schema), input validation
+(422 on missing fields), and that simulated drift fires. CI runs training +
+tests on every push.
 
 ## Dataset
 
-Combined UCI heart-disease dataset (`data/raw/heart.csv`, 1190 rows,
-11 features, binary target). Initial exploratory data analysis and modeling
-experiments are kept in `reference/baseline_classifier.ipynb`.
+Combined UCI heart-disease dataset (`data/raw/heart.csv`, 1190 rows, 918 after
+de-duplication, 11 features, binary target). The starting-point analysis this
+project builds on is kept in `reference/baseline_classifier.ipynb` (see
+[Background](#background)).
 
 ## Dashboard
 
