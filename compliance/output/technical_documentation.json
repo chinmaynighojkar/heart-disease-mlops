@@ -1,0 +1,107 @@
+{
+  "document_title": "Technical Documentation (EU AI Act Annex IV)",
+  "regulation": "Regulation (EU) 2024/1689",
+  "generated_utc": "2026-07-23 10:46:46 UTC",
+  "doc_version": "td-1.2",
+  "content_hash": "915aeb1026f816baa5e14abab83c104afe213cdb82adf6b3f9a802abfe68513c",
+  "sec1": {
+    "intended_purpose": "Estimate the calibrated probability of heart disease from 11 clinical features. Built as an educational MLOps demonstrator; NOT a medical device and not for clinical use.",
+    "provider": "Chinmay Nighojkar (portfolio project)",
+    "version": "1.2",
+    "relation_to_previous_versions": "Version 1.2. Model selected by 5-fold CV ROC-AUC over RandomForest, GradientBoosting and XGBoost.",
+    "interactions": "Served via a FastAPI /predict endpoint (api/main.py); a Streamlit dashboard (dashboard/app.py) reads model metadata, the prediction log and drift reports. No external AI systems are involved.",
+    "software_versions": "scikit-learn 1.5.2, xgboost 2.1.3, shap 0.46.0, evidently 0.4.40, fastapi 0.115.6 (see requirements.txt).",
+    "forms_placed_on_market": "Not placed on any market. Runs as a containerised service (Dockerfile) and a local dashboard for demonstration only.",
+    "target_hardware": "Commodity CPU; no GPU required for inference.",
+    "user_interface": "FastAPI JSON API and a Streamlit monitoring dashboard.",
+    "instructions_for_use": "Submit 11 clinical features to /predict; the response returns a calibrated risk_score, a 0/1 decision at a 0.5 threshold, and per-feature SHAP attributions. Output is decision-support only and must be reviewed by a human."
+  },
+  "sec2": {
+    "development_methods": "Supervised learning on the combined UCI heart-disease dataset. GridSearchCV hyper-parameter tuning on ROC-AUC; probability calibration with CalibratedClassifierCV (sigmoid/Platt, 5-fold).",
+    "design_specifications": "RandomForestClassifier (n_estimators=400, max_depth=None, min_samples_leaf=2). The uncalibrated tree is retained only to compute SHAP attributions; the calibrated classifier produces the served probability.",
+    "optimisation_target": "ROC-AUC during selection/tuning; calibrated probability quality (Brier score) for the served output, because a risk score must be trustworthy as a probability, not just rank-ordered.",
+    "system_architecture": "preprocessing.py -> train.py (model + calibration + SHAP model persisted to models/) -> FastAPI serving with prediction logging -> monitor.py (Evidently drift) -> Streamlit dashboard.",
+    "computational_resources": "Trained on CPU in seconds; artefacts persisted with joblib.",
+    "data_requirements": "Combined UCI heart-disease dataset: 918 rows after de-duplication, split 734 train / 184 test (stratified, random_state=42). Features: age, sex, chest_pain_type, resting_bp_s, cholesterol, fasting_blood_sugar, resting_ecg, max_heart_rate, exercise_angina, oldpeak, st_slope.",
+    "data_cleaning": "Values of 0 for cholesterol (18.7% of rows) and resting_bp_s encode a MISSING measurement, not a real reading, and leak a spurious signal (rows with missing cholesterol show an 88% disease rate vs 55% overall). These zeros are replaced with the training-set median (cholesterol=238.0, resting_bp_s=130.0).",
+    "human_oversight_assessment": "Per-prediction SHAP attributions let a human reviewer see which features drove each score; the model card documents that output is decision-support only. No autonomous decision is taken.",
+    "predetermined_changes": "Retraining is performed by re-running train.py on updated data; there is no automated drift-triggered retraining (documented limitation).",
+    "validation_testing_procedure": "5-fold stratified cross-validation for selection/tuning; a held-out 184-row test set for final metrics; automated tests in tests/ for the API and monitor.",
+    "accuracy_metrics": {
+      "roc_auc": 0.9273,
+      "accuracy": 0.8913,
+      "precision": 0.8868,
+      "recall": 0.9216,
+      "f1": 0.9038,
+      "brier_calibrated": 0.098,
+      "brier_uncalibrated": 0.1023
+    },
+    "subgroup_metrics": {
+      "female": {
+        "n": 38,
+        "accuracy": 0.9474,
+        "roc_auc": 0.9479,
+        "recall": 0.8333,
+        "positive_rate": 0.1579
+      },
+      "male": {
+        "n": 146,
+        "accuracy": 0.8767,
+        "roc_auc": 0.9056,
+        "recall": 0.9271,
+        "positive_rate": 0.6575
+      }
+    },
+    "cybersecurity_measures": "Input validation via Pydantic request schemas on the API; pinned dependencies; containerised runtime. No authentication layer (demonstrator)."
+  },
+  "sec3": {
+    "capabilities_and_limitations": "Capability: calibrated heart-disease risk from tabular clinical inputs. Limitation: trained on a small public dataset, not validated on any real population; performance may not transfer.",
+    "per_group_accuracy": "By sex -- female (n=38): ROC-AUC 0.9479, recall 0.8333; male (n=146): ROC-AUC 0.9056, recall 0.9271. The smaller female subgroup warrants caution.",
+    "overall_expected_accuracy": "Held-out ROC-AUC 0.9273, accuracy 0.8913, recall 0.9216 at a 0.5 threshold.",
+    "foreseeable_unintended_outcomes": "False negatives (missed disease) are the most consequential error for a screening-style score; recall is reported alongside accuracy for this reason. Distribution shift in the patient population would degrade performance.",
+    "human_oversight_measures": "SHAP explanations per prediction; documented intended-use boundary; the dashboard exposes model health and drift to an overseer.",
+    "input_data_specifications": "11 numeric/categorical clinical features with the ranges and encodings documented in the model card; the API rejects malformed inputs."
+  },
+  "sec4": {
+    "rationale": "ROC-AUC captures ranking quality independent of threshold and is standard for clinical risk models. Brier score and a reliability curve are reported because a probability that will be read by a human must be calibrated, not merely discriminative. Recall is highlighted because missed disease is the costliest error. Subgroup metrics test for disparate accuracy (Art. 10/15)."
+  },
+  "sec5": {
+    "description": "Iterative, documented risk management: risks and mitigations are recorded in docs/decision_log.md, and residual risks are stated openly rather than closed out. Mapped article-by-article in the requirement->evidence map.",
+    "identified_risks": [
+      "Data leakage from missing-value sentinels (cholesterol/resting_bp_s == 0).",
+      "Disparate accuracy across sex subgroups (smaller female sample).",
+      "Silent performance decay under population/concept drift.",
+      "Over-reliance on an uncalibrated score by a human reader."
+    ],
+    "mitigations": [
+      "Median imputation of sentinel zeros; documented in preprocessing.py and the model card.",
+      "Subgroup metrics measured and reported by sex.",
+      "Evidently input-drift monitoring with a drift-simulation demonstration.",
+      "Probability calibration (Platt) + per-prediction SHAP for interpretability."
+    ],
+    "residual_risks": [
+      "Article 9: Risk identification and mitigation are documented and reproducible, but retraining is manual (src/train.py); there is no automated, drift-triggered risk-response loop.",
+      "Article 14: Oversight is supported by explanation and documentation, but there is no formal override workflow or logged human-in-the-loop sign-off, since the system is a portfolio demonstrator, not a deployed clinical tool.",
+      "Article 15: Monitoring detects INPUT (data) drift only. Performance/concept drift is not detected because ground-truth outcomes for past predictions are not collected -- a documented Article 15 / Article 72 limitation, not a solved control.",
+      "Article 72: Covers input-distribution monitoring; a full Art. 72 plan would add outcome collection, performance tracking and a documented response procedure."
+    ]
+  },
+  "sec6": {
+    "changes": "Current model version 1.2. Version history and the rationale for each change are maintained in docs/decision_log.md. This compliance layer adds a tamper-evident audit trail over the prediction log."
+  },
+  "sec7": {
+    "harmonised_standards_applied": [
+      "None formally applied (portfolio demonstrator)."
+    ],
+    "solutions_where_no_standard": "In the absence of applied harmonised standards, conformity-relevant practices follow widely used references in spirit: model cards (Mitchell et al., 2019) for transparency, calibration/Brier for accuracy, and SHAP for explainability. ISO/IEC 42001 and the forthcoming CEN-CENELEC AI Act harmonised standards would be the reference points for a real deployment."
+  },
+  "sec8": {
+    "status": "Not applicable -- demonstrator, not placed on the EU market.",
+    "explanation": "No EU declaration of conformity (Art. 47) is issued because this is a portfolio artifact and not a high-risk AI system placed on the market. The field is retained to show where a real Annex IV(8) copy would be attached."
+  },
+  "sec9": {
+    "system_description": "Evidently-based input-drift monitoring over the live prediction log (src/monitor.py), producing dated HTML reports in monitoring/reports/.",
+    "monitoring_plan": "Run drift reporting on a schedule and on demand; investigate flagged feature drift; a --simulate mode demonstrates the report firing on a shifted population.",
+    "known_limitations": "Input drift only. A complete Art. 72 plan would add outcome collection, performance-drift tracking, alert thresholds and a documented response SLA."
+  }
+}

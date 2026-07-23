@@ -1,0 +1,158 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\definecolor{acblue}{RGB}{20,40,90}
+\definecolor{acgrey}{RGB}{90,90,90}
+\titleformat{\section}{\Large\bfseries\color{acblue}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{acblue}}{\thesubsection}{0.6em}{}
+\pagestyle{fancy}\fancyhf{}
+\lhead{\small\color{acgrey}Technical Documentation -- EU AI Act Annex IV}
+\rhead{\small\color{acgrey}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\parindent}{0pt}\setlength{\parskip}{5pt}
+\begin{document}
+\begin{center}
+{\Huge\bfseries\color{acblue} Technical Documentation}\\[4pt]
+{\large per Annex IV, Regulation (EU) 2024/1689 (EU AI Act)}\\[10pt]
+{\large\bfseries Estimate the calibrated probability of heart disease from 11 clinical features}\\[6pt]
+\textbf{Provider:} Chinmay Nighojkar (portfolio project)\\
+
+\textbf{System version:} 1.2\\
+
+\textbf{Document version:} td-1.2\\
+
+\textbf{Generated:} 2026-07-23 10:46:46 UTC\\
+
+\textbf{Content hash (SHA-256):} 915aeb1026f816baa5e14abab83c104afe213cdb82adf6b3f9a802abfe68513c\\
+
+\end{center}
+\vspace{4pt}\hrule\vspace{6pt}
+\textit{\small This document is auto-generated from live model metadata. It demonstrates Annex IV documentation structure for a portfolio project and is not a legal conformity certification.}
+\section*{Risk classification (summary)}
+\textbf{Classification (as built):} Minimal-risk (no specific obligations)\\
+
+\textbf{Primary citations:} Article 6(2); Annex III area 5 (adjacent, not triggered)\\
+
+\textbf{Conclusion:} As built -- an educational demonstrator not placed on the EU market and not connected to any Annex III deployment -- the system is not high-risk today. HOWEVER, its intended-purpose class (clinical risk scoring) is exactly what Annex III area 5 and Article 6(1) capture: the moment it were used for benefit eligibility, insurance pricing, triage, or as a medical device, it would become high-risk and the full Chapter III obligations would attach.\\
+\section*{Annex IV(1) -- General description of the AI system}
+\textbf{Intended purpose:} Estimate the calibrated probability of heart disease from 11 clinical features. Built as an educational MLOps demonstrator; NOT a medical device and not for clinical use.\\
+
+\textbf{Provider / version:} Chinmay Nighojkar (portfolio project) / v1.2\\
+
+\textbf{Relation to previous versions:} Version 1.2. Model selected by 5-fold CV ROC-AUC over RandomForest, GradientBoosting and XGBoost.\\
+
+\textbf{Interactions (b):} Served via a FastAPI /predict endpoint (api/main.py); a Streamlit dashboard (dashboard/app.py) reads model metadata, the prediction log and drift reports. No external AI systems are involved.\\
+
+\textbf{Software versions (c):} scikit-learn 1.5.2, xgboost 2.1.3, shap 0.46.0, evidently 0.4.40, fastapi 0.115.6 (see requirements.txt).\\
+
+\textbf{Forms placed on market (d):} Not placed on any market. Runs as a containerised service (Dockerfile) and a local dashboard for demonstration only.\\
+
+\textbf{Target hardware (e):} Commodity CPU; no GPU required for inference.\\
+
+\textbf{User interface (g):} FastAPI JSON API and a Streamlit monitoring dashboard.\\
+
+\textbf{Instructions for use (h):} Submit 11 clinical features to /predict; the response returns a calibrated risk\_score, a 0/1 decision at a 0.5 threshold, and per-feature SHAP attributions. Output is decision-support only and must be reviewed by a human.\\
+
+\section*{Annex IV(2) -- Detailed description of the elements of the AI system and of its development process}
+\textbf{Development methods (a):} Supervised learning on the combined UCI heart-disease dataset. GridSearchCV hyper-parameter tuning on ROC-AUC; probability calibration with CalibratedClassifierCV (sigmoid/Platt, 5-fold).\\
+
+\textbf{Design specifications (b):} RandomForestClassifier (n\_estimators=400, max\_depth=None, min\_samples\_leaf=2). The uncalibrated tree is retained only to compute SHAP attributions; the calibrated classifier produces the served probability.\\
+
+\textbf{Optimisation target (b):} ROC-AUC during selection/tuning; calibrated probability quality (Brier score) for the served output, because a risk score must be trustworthy as a probability, not just rank-ordered.\\
+
+\textbf{System architecture (c):} preprocessing.py -> train.py (model + calibration + SHAP model persisted to models/) -> FastAPI serving with prediction logging -> monitor.py (Evidently drift) -> Streamlit dashboard.\\
+
+\textbf{Computational resources (c):} Trained on CPU in seconds; artefacts persisted with joblib.\\
+
+\textbf{Data requirements (d):} Combined UCI heart-disease dataset: 918 rows after de-duplication, split 734 train / 184 test (stratified, random\_state=42). Features: age, sex, chest\_pain\_type, resting\_bp\_s, cholesterol, fasting\_blood\_sugar, resting\_ecg, max\_heart\_rate, exercise\_angina, oldpeak, st\_slope.\\
+
+\textbf{Data cleaning (d):} Values of 0 for cholesterol (18.7\% of rows) and resting\_bp\_s encode a MISSING measurement, not a real reading, and leak a spurious signal (rows with missing cholesterol show an 88\% disease rate vs 55\% overall). These zeros are replaced with the training-set median (cholesterol=238.0, resting\_bp\_s=130.0).\\
+
+\textbf{Human-oversight assessment (e):} Per-prediction SHAP attributions let a human reviewer see which features drove each score; the model card documents that output is decision-support only. No autonomous decision is taken.\\
+
+\textbf{Pre-determined changes (f):} Retraining is performed by re-running train.py on updated data; there is no automated drift-triggered retraining (documented limitation).\\
+
+\textbf{Validation \& testing (g):} 5-fold stratified cross-validation for selection/tuning; a held-out 184-row test set for final metrics; automated tests in tests/ for the API and monitor.\\
+
+\textbf{Cybersecurity (h):} Input validation via Pydantic request schemas on the API; pinned dependencies; containerised runtime. No authentication layer (demonstrator).\\
+
+\textbf{Accuracy metrics (g):}\\[2pt]
+\begin{tabular}{ll}\toprule Metric & Value \\ \midrule
+roc\_auc & 0.9273 \\
+accuracy & 0.8913 \\
+precision & 0.8868 \\
+recall & 0.9216 \\
+f1 & 0.9038 \\
+brier\_calibrated & 0.0980 \\
+brier\_uncalibrated & 0.1023 \\
+\bottomrule\end{tabular}\\[4pt]
+\textbf{Subgroup metrics by sex (g -- discriminatory-impact check):}\\[2pt]
+\begin{tabular}{lrrrr}\toprule Group & n & Accuracy & ROC-AUC & Recall \\ \midrule
+female & 38 & 0.9474 & 0.9479 & 0.8333 \\
+male & 146 & 0.8767 & 0.9056 & 0.9271 \\
+\bottomrule\end{tabular}
+\section*{Annex IV(3) -- Monitoring, functioning and control of the AI system}
+\textbf{Capabilities \& limitations:} Capability: calibrated heart-disease risk from tabular clinical inputs. Limitation: trained on a small public dataset, not validated on any real population; performance may not transfer.\\
+
+\textbf{Per-group accuracy:} By sex -- female (n=38): ROC-AUC 0.9479, recall 0.8333; male (n=146): ROC-AUC 0.9056, recall 0.9271. The smaller female subgroup warrants caution.\\
+
+\textbf{Overall expected accuracy:} Held-out ROC-AUC 0.9273, accuracy 0.8913, recall 0.9216 at a 0.5 threshold.\\
+
+\textbf{Foreseeable unintended outcomes:} False negatives (missed disease) are the most consequential error for a screening-style score; recall is reported alongside accuracy for this reason. Distribution shift in the patient population would degrade performance.\\
+
+\textbf{Human-oversight measures:} SHAP explanations per prediction; documented intended-use boundary; the dashboard exposes model health and drift to an overseer.\\
+
+\textbf{Input-data specifications:} 11 numeric/categorical clinical features with the ranges and encodings documented in the model card; the API rejects malformed inputs.\\
+
+\section*{Annex IV(4) -- Appropriateness of the performance metrics}
+ROC-AUC captures ranking quality independent of threshold and is standard for clinical risk models. Brier score and a reliability curve are reported because a probability that will be read by a human must be calibrated, not merely discriminative. Recall is highlighted because missed disease is the costliest error. Subgroup metrics test for disparate accuracy (Art. 10/15).
+\section*{Annex IV(5) -- Risk management system (Article 9)}
+Iterative, documented risk management: risks and mitigations are recorded in docs/decision\_log.md, and residual risks are stated openly rather than closed out. Mapped article-by-article in the requirement->evidence map.\\[4pt]
+\textbf{Identified risks:}
+\begin{itemize}[leftmargin=1.4em,topsep=1pt]
+\item Data leakage from missing-value sentinels (cholesterol/resting\_bp\_s == 0).
+\item Disparate accuracy across sex subgroups (smaller female sample).
+\item Silent performance decay under population/concept drift.
+\item Over-reliance on an uncalibrated score by a human reader.
+\end{itemize}
+\textbf{Mitigations:}
+\begin{itemize}[leftmargin=1.4em,topsep=1pt]
+\item Median imputation of sentinel zeros; documented in preprocessing.py and the model card.
+\item Subgroup metrics measured and reported by sex.
+\item Evidently input-drift monitoring with a drift-simulation demonstration.
+\item Probability calibration (Platt) + per-prediction SHAP for interpretability.
+\end{itemize}
+\textbf{Residual risks (stated openly):}
+\begin{itemize}[leftmargin=1.4em,topsep=1pt]
+\item Article 9: Risk identification and mitigation are documented and reproducible, but retraining is manual (src/train.py); there is no automated, drift-triggered risk-response loop.
+\item Article 14: Oversight is supported by explanation and documentation, but there is no formal override workflow or logged human-in-the-loop sign-off, since the system is a portfolio demonstrator, not a deployed clinical tool.
+\item Article 15: Monitoring detects INPUT (data) drift only. Performance/concept drift is not detected because ground-truth outcomes for past predictions are not collected -- a documented Article 15 / Article 72 limitation, not a solved control.
+\item Article 72: Covers input-distribution monitoring; a full Art. 72 plan would add outcome collection, performance tracking and a documented response procedure.
+\end{itemize}
+\section*{Annex IV(6) -- Lifecycle changes}
+Current model version 1.2. Version history and the rationale for each change are maintained in docs/decision\_log.md. This compliance layer adds a tamper-evident audit trail over the prediction log.
+\section*{Annex IV(7) -- Harmonised standards applied}
+\textbf{Harmonised standards applied:} None formally applied (portfolio demonstrator).\\
+
+\textbf{Solutions where no standard:} In the absence of applied harmonised standards, conformity-relevant practices follow widely used references in spirit: model cards (Mitchell et al., 2019) for transparency, calibration/Brier for accuracy, and SHAP for explainability. ISO/IEC 42001 and the forthcoming CEN-CENELEC AI Act harmonised standards would be the reference points for a real deployment.\\
+
+\section*{Annex IV(8) -- EU declaration of conformity}
+\textbf{Status:} Not applicable -- demonstrator, not placed on the EU market.\\
+
+No EU declaration of conformity (Art. 47) is issued because this is a portfolio artifact and not a high-risk AI system placed on the market. The field is retained to show where a real Annex IV(8) copy would be attached.
+\section*{Annex IV(9) -- Post-market monitoring (Article 72)}
+\textbf{System description:} Evidently-based input-drift monitoring over the live prediction log (src/monitor.py), producing dated HTML reports in monitoring/reports/.\\
+
+\textbf{Monitoring plan:} Run drift reporting on a schedule and on demand; investigate flagged feature drift; a --simulate mode demonstrates the report firing on a shifted population.\\
+
+\textbf{Known limitations:} Input drift only. A complete Art. 72 plan would add outcome collection, performance-drift tracking, alert thresholds and a documented response SLA.\\
+
+\vfill\hrule\vspace{4pt}
+\textit{\small Generated by the heart-disease-mlops compliance module. Structure follows Annex IV of Regulation (EU) 2024/1689. Not legal advice.}
+\end{document}

@@ -65,7 +65,9 @@ def load_predictions() -> pd.DataFrame:
 
 
 st.title("❤️ Heart Disease Risk Model Monitoring")
-tab1, tab2, tab3 = st.tabs(["Model Overview", "Recent Predictions", "Drift Monitoring"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["Model Overview", "Recent Predictions", "Drift Monitoring", "AI Act Compliance"]
+)
 
 # --- Tab 1: Model Overview ---
 with tab1:
@@ -153,3 +155,8 @@ with tab3:
             st.write([r.name for r in reports])
     else:
         st.info("No drift reports yet. Click the button above to generate one.")
+
+# --- Tab 4: AI Act Compliance ---
+with tab4:
+    from compliance.dashboard_compliance import render_compliance_tab
+    render_compliance_tab()
