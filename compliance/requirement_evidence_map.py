@@ -42,7 +42,7 @@ class Evidence:
 
 
 def _metrics() -> dict:
-    return json.loads(METRICS_PATH.read_text())
+    return json.loads(METRICS_PATH.read_text(encoding="utf-8"))
 
 
 def build_evidence_map() -> list[Evidence]:
@@ -160,7 +160,7 @@ def _count_log_lines() -> int:
     log = REPO_ROOT / "monitoring" / "logs" / "predictions.jsonl"
     if not log.exists():
         return 0
-    return sum(1 for line in log.read_text().splitlines() if line.strip())
+    return sum(1 for line in log.read_text(encoding="utf-8").splitlines() if line.strip())
 
 
 def verify_evidence_map() -> tuple[bool, list[str]]:

@@ -17,13 +17,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 from compliance.ai_act_reference import ANNEX_IV, REGULATION
-from compliance.requirement_evidence_map import build_evidence_map
+from compliance.requirement_evidence_map import GAP, PARTIAL, build_evidence_map
 from compliance.risk_classifier import classify
 from compliance.schemas import (
     Sec1GeneralDescription,
@@ -46,15 +47,19 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 # --------------------------------------------------------------------------- #
 # LaTeX helpers                                                               #
 # --------------------------------------------------------------------------- #
+_TEX_SPECIAL_CHARS = {
+    "\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$",
+    "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}", "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
+}
+_TEX_ESCAPE_RE = re.compile("|".join(re.escape(c) for c in _TEX_SPECIAL_CHARS))
+
+
 def tex_escape(s: str) -> str:
-    repl = {
-        "\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$",
-        "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}", "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-    for k, v in repl.items():
-        s = s.replace(k, v)
-    return s
+    """Escape LaTeX special characters in a single pass over the ORIGINAL
+    string, so a replacement (e.g. the braces in \\textbackslash{}) is never
+    re-matched by a later rule in the same call."""
+    return _TEX_ESCAPE_RE.sub(lambda m: _TEX_SPECIAL_CHARS[m.group()], s)
 
 
 def _kv(label: str, value: str) -> str:
@@ -65,7 +70,7 @@ def _kv(label: str, value: str) -> str:
 # Populate the schema from real metadata                                      #
 # --------------------------------------------------------------------------- #
 def build_documentation() -> TechnicalDocumentation:
-    m = json.loads(METRICS_PATH.read_text())
+    m = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
     tm = m["test_metrics"]
     cal = m["calibration"]
     sub = m["subgroup_metrics_by_sex"]
@@ -213,6 +218,10 @@ def build_documentation() -> TechnicalDocumentation:
     )
 
     ev = build_evidence_map()
+    # Residual risks are pulled live from the requirement->evidence map's own
+    # PARTIAL/GAP notes, rather than a second hand-authored copy of the same
+    # facts -- so this section cannot drift from Step 1's honest gap-flagging.
+    residual_risks = [f"{e.article}: {e.note}" for e in ev if e.status in (PARTIAL, GAP) and e.note]
     sec5 = Sec5RiskManagement(
         description=(
             "Iterative, documented risk management: risks and mitigations are recorded "
@@ -231,11 +240,7 @@ def build_documentation() -> TechnicalDocumentation:
             "Evidently input-drift monitoring with a drift-simulation demonstration.",
             "Probability calibration (Platt) + per-prediction SHAP for interpretability.",
         ],
-        residual_risks=[
-            "No concept/performance drift detection (no ground-truth outcome collection).",
-            "No automated retraining trigger; retraining is manual.",
-            "Small, non-clinical dataset; not externally validated.",
-        ],
+        residual_risks=residual_risks,
     )
 
     sec6 = Sec6LifecycleChanges(
@@ -289,9 +294,14 @@ def build_documentation() -> TechnicalDocumentation:
         sec1=sec1, sec2=sec2, sec3=sec3, sec4=sec4, sec5=sec5,
         sec6=sec6, sec7=sec7, sec8=sec8, sec9=sec9,
     )
-    # Content hash over the substantive payload (excludes the hash field itself).
+    # Content hash over the substantive payload only: excludes the hash field
+    # itself AND generated_utc (a wall-clock timestamp), so two builds with
+    # identical substantive content produce the same hash. Without excluding
+    # generated_utc, the hash would change on every run even when nothing
+    # about the model or documentation actually changed.
     payload = doc.model_dump()
     payload.pop("content_hash", None)
+    payload.pop("generated_utc", None)
     doc.content_hash = hashlib.sha256(
         json.dumps(payload, sort_keys=True, default=str).encode()
     ).hexdigest()
@@ -447,10 +457,10 @@ def generate_pdf() -> Path:
     doc = build_documentation()
     tex = render_latex(doc)
     tex_path = OUTPUT_DIR / "technical_documentation.tex"
-    tex_path.write_text(tex)
+    tex_path.write_text(tex, encoding="utf-8")
     # persist the structured JSON too (useful for the dashboard / audit)
     (OUTPUT_DIR / "technical_documentation.json").write_text(
-        doc.model_dump_json(indent=2)
+        doc.model_dump_json(indent=2), encoding="utf-8"
     )
 
     engine = "xelatex" if shutil.which("xelatex") else "pdflatex"

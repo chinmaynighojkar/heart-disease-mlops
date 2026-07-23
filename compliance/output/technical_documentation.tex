@@ -27,9 +27,9 @@
 
 \textbf{Document version:} td-1.2\\
 
-\textbf{Generated:} 2026-07-23 01:40:36 UTC\\
+\textbf{Generated:} 2026-07-23 10:46:46 UTC\\
 
-\textbf{Content hash (SHA-256):} 6c1b96f944505f119c889afc6b4c8d468f0af82af3cd4792b9e59c87ebe652c7\\
+\textbf{Content hash (SHA-256):} 915aeb1026f816baa5e14abab83c104afe213cdb82adf6b3f9a802abfe68513c\\
 
 \end{center}
 \vspace{4pt}\hrule\vspace{6pt}
@@ -130,9 +130,10 @@ Iterative, documented risk management: risks and mitigations are recorded in doc
 \end{itemize}
 \textbf{Residual risks (stated openly):}
 \begin{itemize}[leftmargin=1.4em,topsep=1pt]
-\item No concept/performance drift detection (no ground-truth outcome collection).
-\item No automated retraining trigger; retraining is manual.
-\item Small, non-clinical dataset; not externally validated.
+\item Article 9: Risk identification and mitigation are documented and reproducible, but retraining is manual (src/train.py); there is no automated, drift-triggered risk-response loop.
+\item Article 14: Oversight is supported by explanation and documentation, but there is no formal override workflow or logged human-in-the-loop sign-off, since the system is a portfolio demonstrator, not a deployed clinical tool.
+\item Article 15: Monitoring detects INPUT (data) drift only. Performance/concept drift is not detected because ground-truth outcomes for past predictions are not collected -- a documented Article 15 / Article 72 limitation, not a solved control.
+\item Article 72: Covers input-distribution monitoring; a full Art. 72 plan would add outcome collection, performance tracking and a documented response procedure.
 \end{itemize}
 \section*{Annex IV(6) -- Lifecycle changes}
 Current model version 1.2. Version history and the rationale for each change are maintained in docs/decision\_log.md. This compliance layer adds a tamper-evident audit trail over the prediction log.

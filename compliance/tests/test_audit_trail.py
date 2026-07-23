@@ -84,11 +84,21 @@ def test_reorder_is_detected(tmp_path):
     assert res.valid is False
 
 
-def test_real_prediction_log_chains_and_verifies():
-    """The real repo prediction log must build and verify cleanly."""
+def test_real_prediction_log_chains_and_verifies(tmp_path):
+    """The real repo prediction log must build and verify cleanly.
+
+    Copies the real log into tmp_path first so this test never writes to
+    monitoring/logs/predictions_chained.jsonl -- that file is also rebuilt by
+    the dashboard's "Rebuild + verify chain" button, and a test suite racing
+    the dashboard on the same real file is exactly the kind of non-hermetic
+    behaviour that makes CI flaky and can corrupt a file meant to be evidence.
+    """
     if not at.SOURCE_LOG.exists():
         return  # nothing to check in a bare checkout
-    n = at.build_chain()
+    src = tmp_path / "predictions.jsonl"
+    dest = tmp_path / "predictions_chained.jsonl"
+    src.write_text(at.SOURCE_LOG.read_text(encoding="utf-8"), encoding="utf-8")
+    n = at.build_chain(src, dest)
     assert n > 0
-    res = at.verify_chain()
+    res = at.verify_chain(dest)
     assert res.valid, res.reason

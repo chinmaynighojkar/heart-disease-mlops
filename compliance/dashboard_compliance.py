@@ -109,9 +109,14 @@ def render_compliance_tab() -> None:
     with st.expander("③ Audit-trail integrity (Article 12 record-keeping)", expanded=True):
         col_a, col_b = st.columns([1, 2])
         if col_a.button("Rebuild + verify chain"):
-            n = build_chain()
-            chain_res = verify_chain()
-            st.success(f"Rebuilt {n} entries.")
+            try:
+                n = build_chain()
+                chain_res = verify_chain()
+                st.success(f"Rebuilt {n} entries.")
+            except FileNotFoundError:
+                st.warning("No predictions logged yet -- call /predict at least once, then rebuild.")
+            except ValueError as e:
+                st.error(f"Could not rebuild the chain: {e}")
         if chain_res is not None:
             if chain_res.valid:
                 st.success(
@@ -142,7 +147,7 @@ def render_compliance_tab() -> None:
         json_path = OUTPUT_DIR / "technical_documentation.json"
         if json_path.exists():
             import json as _json
-            data = _json.loads(json_path.read_text())
+            data = _json.loads(json_path.read_text(encoding="utf-8"))
             st.caption(f"Doc version `{data.get('doc_version')}` · "
                        f"content hash `{data.get('content_hash','')[:24]}…` · "
                        f"generated {data.get('generated_utc')}")

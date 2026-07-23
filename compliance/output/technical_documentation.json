@@ -1,9 +1,9 @@
 {
   "document_title": "Technical Documentation (EU AI Act Annex IV)",
   "regulation": "Regulation (EU) 2024/1689",
-  "generated_utc": "2026-07-23 01:40:36 UTC",
+  "generated_utc": "2026-07-23 10:46:46 UTC",
   "doc_version": "td-1.2",
-  "content_hash": "6c1b96f944505f119c889afc6b4c8d468f0af82af3cd4792b9e59c87ebe652c7",
+  "content_hash": "915aeb1026f816baa5e14abab83c104afe213cdb82adf6b3f9a802abfe68513c",
   "sec1": {
     "intended_purpose": "Estimate the calibrated probability of heart disease from 11 clinical features. Built as an educational MLOps demonstrator; NOT a medical device and not for clinical use.",
     "provider": "Chinmay Nighojkar (portfolio project)",
@@ -80,9 +80,10 @@
       "Probability calibration (Platt) + per-prediction SHAP for interpretability."
     ],
     "residual_risks": [
-      "No concept/performance drift detection (no ground-truth outcome collection).",
-      "No automated retraining trigger; retraining is manual.",
-      "Small, non-clinical dataset; not externally validated."
+      "Article 9: Risk identification and mitigation are documented and reproducible, but retraining is manual (src/train.py); there is no automated, drift-triggered risk-response loop.",
+      "Article 14: Oversight is supported by explanation and documentation, but there is no formal override workflow or logged human-in-the-loop sign-off, since the system is a portfolio demonstrator, not a deployed clinical tool.",
+      "Article 15: Monitoring detects INPUT (data) drift only. Performance/concept drift is not detected because ground-truth outcomes for past predictions are not collected -- a documented Article 15 / Article 72 limitation, not a solved control.",
+      "Article 72: Covers input-distribution monitoring; a full Art. 72 plan would add outcome collection, performance tracking and a documented response procedure."
     ]
   },
   "sec6": {

@@ -44,11 +44,17 @@ def build_chain(source: Path = SOURCE_LOG, dest: Path = CHAIN_LOG) -> int:
     Returns the number of chained entries."""
     if not source.exists():
         raise FileNotFoundError(f"No source log at {source}")
-    lines = [ln for ln in source.read_text().splitlines() if ln.strip()]
+    lines = [ln for ln in source.read_text(encoding="utf-8").splitlines() if ln.strip()]
     prev = GENESIS
     out_lines: list[str] = []
     for i, ln in enumerate(lines):
-        record = json.loads(ln)
+        try:
+            record = json.loads(ln)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Malformed source log entry at line {i + 1} of {source}: {e}. "
+                "Fix or remove the offending line before rebuilding the chain."
+            ) from e
         record["seq"] = i
         record["prev_hash"] = prev
         h = _entry_hash(record, prev)
@@ -56,7 +62,9 @@ def build_chain(source: Path = SOURCE_LOG, dest: Path = CHAIN_LOG) -> int:
         out_lines.append(json.dumps(record, separators=(",", ":")))
         prev = h
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text("\n".join(out_lines) + ("\n" if out_lines else ""))
+    tmp = dest.with_name(dest.name + ".tmp")
+    tmp.write_text("\n".join(out_lines) + ("\n" if out_lines else ""), encoding="utf-8")
+    tmp.replace(dest)  # atomic on both POSIX and Windows: no reader ever sees a partial file
     return len(out_lines)
 
 
@@ -79,10 +87,14 @@ def verify_chain(chain: Path = CHAIN_LOG) -> ChainResult:
     Detects: edited payloads, altered/removed entries, reordering."""
     if not chain.exists():
         return ChainResult(valid=False, n_entries=0, reason=f"No chain file at {chain}")
-    lines = [ln for ln in chain.read_text().splitlines() if ln.strip()]
+    lines = [ln for ln in chain.read_text(encoding="utf-8").splitlines() if ln.strip()]
     prev = GENESIS
     for i, ln in enumerate(lines):
-        record = json.loads(ln)
+        try:
+            record = json.loads(ln)
+        except json.JSONDecodeError as e:
+            return ChainResult(False, len(lines), broken_at=i,
+                               reason=f"malformed JSON at seq {i}: chain entry cannot be parsed ({e}).")
         # 1. link integrity
         if record.get("prev_hash") != prev:
             return ChainResult(False, len(lines), broken_at=i,
